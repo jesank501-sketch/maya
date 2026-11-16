@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: default deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable hardened helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'jesank501@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidProfile(data) {
+      return data.keys().hasAll([
+        'name', 'age', 'gender', 'city', 'profession', 'education',
+        'height', 'mutualFriends', 'shortBio', 'fullBio', 'interests',
+        'imageUrl', 'verified', 'relationshipStatus', 'availabilityLabel',
+        'messageLabel', 'messageLinkOverride', 'sortOrder',
+        'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'name', 'age', 'gender', 'city', 'profession', 'education',
+        'height', 'mutualFriends', 'shortBio', 'fullBio', 'interests',
+        'imageUrl', 'verified', 'relationshipStatus', 'availabilityLabel',
+        'messageLabel', 'messageLinkOverride', 'sortOrder',
+        'createdBy', 'createdAt', 'updatedAt'
+      ]) &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+      data.age is number && data.age >= 18 && data.age <= 99 &&
+      data.gender is string && (data.gender == 'female' || data.gender == 'male') &&
+      data.city is string && data.city.size() <= 100 &&
+      data.profession is string && data.profession.size() <= 120 &&
+      data.education is string && data.education.size() <= 160 &&
+      data.height is string && data.height.size() <= 60 &&
+      data.mutualFriends is number && data.mutualFriends >= 0 && data.mutualFriends <= 100000 &&
+      data.shortBio is string && data.shortBio.size() <= 400 &&
+      data.fullBio is string && data.fullBio.size() <= 1500 &&
+      data.interests is list && data.interests.size() <= 15 &&
+      (data.interests.size() == 0 || data.interests[0] is string) &&
+      data.imageUrl is string && data.imageUrl.size() <= 200000 &&
+      data.verified is bool &&
+      data.relationshipStatus is string && data.relationshipStatus.size() <= 60 &&
+      data.availabilityLabel is string && data.availabilityLabel.size() <= 80 &&
+      data.messageLabel is string && data.messageLabel.size() <= 60 &&
+      data.messageLinkOverride is string && data.messageLinkOverride.size() <= 500 &&
+      data.sortOrder is number &&
+      data.createdBy is string && data.createdBy.size() <= 128 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidSiteSettings(data) {
+      return data.keys().hasAll([
+        'brandName', 'heroTitle', 'heroSubtitle', 'heroCtaText', 'heroImage',
+        'bannerAds', 'popupAd', 'directLinks', 'featuredMedia',
+        'updatedBy', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'brandName', 'heroTitle', 'heroSubtitle', 'heroCtaText', 'heroImage',
+        'bannerAds', 'popupAd', 'directLinks', 'featuredMedia',
+        'updatedBy', 'updatedAt'
+      ]) &&
+      data.brandName is string && data.brandName.size() >= 1 && data.brandName.size() <= 80 &&
+      data.heroTitle is string && data.heroTitle.size() >= 1 && data.heroTitle.size() <= 240 &&
+      data.heroSubtitle is string && data.heroSubtitle.size() <= 500 &&
+      data.heroCtaText is string && data.heroCtaText.size() >= 1 && data.heroCtaText.size() <= 80 &&
+      data.heroImage is string && data.heroImage.size() <= 200000 &&
+      data.bannerAds is list && data.bannerAds.size() <= 20 &&
+      data.popupAd is map &&
+      data.directLinks is map &&
+      data.directLinks.links is list && data.directLinks.links.size() <= 30 &&
+      (data.directLinks.links.size() == 0 || data.directLinks.links[0] is string) &&
+      data.featuredMedia is map &&
+      data.updatedBy is string && data.updatedBy.size() <= 128 &&
+      data.updatedAt is timestamp;
+    }
+
+    // Publicly readable profiles; only verified Admin can create, update, or delete
+    match /profiles/{profileId} {
+      allow list: if true;
+      allow get: if isValidId(profileId);
+      allow create: if isAdmin() &&
+        isValidId(profileId) &&
+        isValidProfile(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(profileId) &&
+        isValidProfile(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'age', 'gender', 'city', 'profession', 'education',
+          'height', 'mutualFriends', 'shortBio', 'fullBio', 'interests',
+          'imageUrl', 'verified', 'relationshipStatus', 'availabilityLabel',
+          'messageLabel', 'messageLinkOverride', 'sortOrder', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(profileId);
+    }
+
+    // Publicly readable site settings (hero, banner ads, popup ad, video, direct links); only Admin writes
+    match /siteSettings/{settingId} {
+      allow list: if false;
+      allow get: if isValidId(settingId) && settingId == 'main';
+      allow create: if isAdmin() &&
+        isValidId(settingId) &&
+        settingId == 'main' &&
+        isValidSiteSettings(incoming()) &&
+        incoming().updatedBy == request.auth.uid &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        isValidId(settingId) &&
+        settingId == 'main' &&
+        isValidSiteSettings(incoming()) &&
+        incoming().updatedBy == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'brandName', 'heroTitle', 'heroSubtitle', 'heroCtaText', 'heroImage',
+          'bannerAds', 'popupAd', 'directLinks', 'featuredMedia',
+          'updatedBy', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // Admin registry strictly private to verified admins
+    match /admins/{adminId} {
+      allow get: if isAdmin() && isValidId(adminId);
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    // Connection test document (read-only)
+    match /test/connection {
+      allow get: if true;
+      allow list, write: if false;
+    }
+  }
+}

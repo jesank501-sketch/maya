@@ -1,0 +1,235 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "A customizable profile card with bio details and direct-link CTA configuration.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of the profile.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "age": {
+          "type": "number",
+          "description": "Age of the person (18 to 99)."
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["female", "male"],
+          "description": "Profile category."
+        },
+        "city": {
+          "type": "string",
+          "description": "City or neighborhood.",
+          "maxLength": 100
+        },
+        "profession": {
+          "type": "string",
+          "description": "Profession or role.",
+          "maxLength": 120
+        },
+        "education": {
+          "type": "string",
+          "description": "Education background.",
+          "maxLength": 160
+        },
+        "height": {
+          "type": "string",
+          "description": "Height string.",
+          "maxLength": 60
+        },
+        "mutualFriends": {
+          "type": "number",
+          "description": "Mutual friends count."
+        },
+        "shortBio": {
+          "type": "string",
+          "description": "Short summary bio shown on the card.",
+          "maxLength": 400
+        },
+        "fullBio": {
+          "type": "string",
+          "description": "Full bio details shown in the detail modal.",
+          "maxLength": 1500
+        },
+        "interests": {
+          "type": "array",
+          "description": "List of interests/hobbies (up to 15 items)."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Portrait image path, URL, or compressed data URL.",
+          "maxLength": 200000
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Verified badge flag."
+        },
+        "relationshipStatus": {
+          "type": "string",
+          "description": "Relationship status label.",
+          "maxLength": 60
+        },
+        "availabilityLabel": {
+          "type": "string",
+          "description": "Availability status label.",
+          "maxLength": 80
+        },
+        "messageLabel": {
+          "type": "string",
+          "description": "Primary direct-link button label.",
+          "maxLength": 60
+        },
+        "messageLinkOverride": {
+          "type": "string",
+          "description": "Direct link URL override for this profile.",
+          "maxLength": 500
+        },
+        "sortOrder": {
+          "type": "number",
+          "description": "Display ordering index."
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Admin UID who created this profile.",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "name",
+        "age",
+        "gender",
+        "city",
+        "profession",
+        "education",
+        "height",
+        "mutualFriends",
+        "shortBio",
+        "fullBio",
+        "interests",
+        "imageUrl",
+        "verified",
+        "relationshipStatus",
+        "availabilityLabel",
+        "messageLabel",
+        "messageLinkOverride",
+        "sortOrder",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Public landing page configuration, ads, popup config, featured video, and direct link pool.",
+      "type": "object",
+      "properties": {
+        "brandName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "heroTitle": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "heroSubtitle": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "heroCtaText": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "heroImage": {
+          "type": "string",
+          "maxLength": 200000
+        },
+        "bannerAds": {
+          "type": "array",
+          "description": "Configured top and mid-feed banner ads."
+        },
+        "popupAd": {
+          "type": "object",
+          "description": "Popup ad configuration."
+        },
+        "directLinks": {
+          "type": "object",
+          "description": "Direct link pool and rotation settings."
+        },
+        "featuredMedia": {
+          "type": "object",
+          "description": "Featured video showcase configuration."
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "brandName",
+        "heroTitle",
+        "heroSubtitle",
+        "heroCtaText",
+        "heroImage",
+        "bannerAds",
+        "popupAd",
+        "directLinks",
+        "featuredMedia",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized administrator registry.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/profiles/{profileId}": {
+      "schema": {
+        "$ref": "#/entities/Profile"
+      },
+      "description": "Publicly readable, admin-managed customizable profiles."
+    },
+    "/siteSettings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/SiteSettings"
+      },
+      "description": "Publicly readable, admin-managed landing page, ads, video, and direct-link configuration."
+    },
+    "/admins/{adminId}": {
+      "schema": {
+        "$ref": "#/entities/AdminUser"
+      },
+      "description": "Admin role records."
+    }
+  }
+}
